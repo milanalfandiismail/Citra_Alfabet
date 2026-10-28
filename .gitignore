@@ -1,0 +1,48 @@
+# Dataset & Arsip Besar (Dilarang ke Remote)
+/bisindo/
+bisindo/
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Python Virtual Environment & Pengaturan Lokal
+.venv/
+venv/
+env/
+ENV/
+*.env
+*.env.*
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# File Debug & Citra Uji Sementara
+debug_*
+test_segmented.jpg
+test_tight_crop.jpg
+temp_*
+*.tmp
+*.log
+
+# File Diagnostik Sementara
+diagnose_*.py
+
+# OS & Editor Artifacts
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# File Slide/Materi Kuliah Mentah (.txt / .pptx)
+*.txt
+*.pptx
+*.pdf

@@ -150,11 +150,12 @@ Menampilkan visualisasi skeleton sendi tangan beserta diagram batang probabilita
 
 ---
 
-## 📜 Lisensi & Atribusi (Open Source Notice)
-- **Lisensi Kode Utama**: Repositori ini dilisensikan di bawah [MIT License](LICENSE) - Hak Cipta &copy; 2026 **Milan Alfandi Ismail**. Bebas digunakan, dimodifikasi, dan didistribusikan untuk keperluan akademik maupun pengembangan perangkat lunak.
-- **Atribusi Dataset (Third-Party Open Source Notice)**:
-  - Dataset: [Indonesian Sign Language (BISINDO)](https://www.kaggle.com/datasets/agungmrf/indonesian-sign-language-bisindo/data) oleh **Agung MRF** via Kaggle.
-  - Digunakan untuk tujuan penelitian ilmiah, benchmarking model, dan edukasi sistem pengenalan bahasa isyarat. Seluruh hak cipta data citra mentah adalah milik kontributor dataset.
-- **Pustaka & Model Eksternal**:
-  - MediaPipe Hand Landmarker (Apache License 2.0 oleh Google LLC).
-  - PyTorch & Torchvision (BSD-3-Clause License oleh Meta Platforms, Inc. & PyTorch Contributors).
+## 📜 Lisensi & Atribusi
+
+- **Lisensi Proyek**: [MIT License](LICENSE) &copy; 2026 **Milan Alfandi Ismail**.
+- **Dataset**: [Indonesian Sign Language (BISINDO)](https://www.kaggle.com/datasets/agungmrf/indonesian-sign-language-bisindo/data) oleh Agung MRF di Kaggle.
+- **Pustaka Open Source**:
+  - [Google MediaPipe](https://github.com/google-ai-edge/mediapipe) (Apache-2.0)
+  - [PyTorch & Torchvision](https://github.com/pytorch/pytorch) (BSD-3-Clause)
+  - [Microsoft DirectML](https://github.com/microsoft/DirectML) (MIT)
+  - [OpenCV](https://github.com/opencv/opencv) (Apache-2.0)

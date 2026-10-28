@@ -22,20 +22,12 @@ SOFTWARE.
 
 ---
 
-### Third-Party Notices & Acknowledgements (Atribusi Pihak Ketiga)
+### Atribusi & Pihak Ketiga (Third-Party Notices)
 
-Proyek ini menghargai dan mematuhi etika lisensi open-source serta atribusi karya pihak ketiga:
+Proyek ini menggunakan pustaka dan dataset terbuka dengan atribusi ke repositori resmi masing-masing:
 
-1. **Dataset Indonesian Sign Language (BISINDO)**
-   - Sumber: Kaggle Open Datasets ([Indonesian Sign Language - BISINDO](https://www.kaggle.com/datasets/agungmrf/indonesian-sign-language-bisindo/data))
-   - Kontributor / Author: Agung MRF
-   - Penggunaan: Digunakan untuk keperluan riset akademis, pelatihan model, dan evaluasi benchmarking. Hak cipta citra asli tetap berada pada pemilik/kontributor dataset.
-
-2. **MediaPipe Hand Landmarker**
-   - Hak Cipta: Copyright (c) Google LLC
-   - Lisensi: Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
-   - Digunakan untuk ekstraksi koordinat spasial 3D sendi tangan secara real-time.
-
-3. **PyTorch & Torchvision**
-   - Hak Cipta: Copyright (c) PyTorch Contributors & Meta Platforms, Inc.
-   - Lisensi: BSD-3-Clause License
+- **Dataset BISINDO**: Kaggle Dataset ([agungmrf/indonesian-sign-language-bisindo](https://www.kaggle.com/datasets/agungmrf/indonesian-sign-language-bisindo/data)) oleh Agung MRF.
+- **MediaPipe**: https://github.com/google-ai-edge/mediapipe (Apache-2.0)
+- **PyTorch & Torchvision**: https://github.com/pytorch/pytorch (BSD-3-Clause)
+- **DirectML**: https://github.com/microsoft/DirectML (MIT)
+- **OpenCV**: https://github.com/opencv/opencv (Apache-2.0)

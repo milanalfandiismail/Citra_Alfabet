@@ -143,12 +143,18 @@ Menampilkan visualisasi skeleton sendi tangan beserta diagram batang probabilita
 ├── best_custom_cnn.pth                   # Bobot terlatih Model 1 (3.65 MB)
 ├── landmarks_train.npz                   # Fitur terkompresi data latih sendi (4.160 sampel)
 ├── landmarks_val.npz                     # Fitur terkompresi data validasi sendi (910 sampel)
+├── LICENSE                               # Lisensi MIT (Milan Alfandi Ismail) & Third-Party Notice
 ├── RUN_INSTRUCTIONS.md                   # Panduan cepat instalasi & eksekusi
 └── .gitignore                            # Konfigurasi pengecualian file remote
 ```
 
 ---
 
-## 📜 Lisensi & Atribusi
-- **Dataset**: [Indonesian Sign Language (BISINDO)](https://www.kaggle.com/datasets/agungmrf/indonesian-sign-language-bisindo/data) oleh **Agung MRF** di Kaggle.
-- Proyek ini dikembangkan untuk tujuan akademis dan riset klasifikasi citra sistem pengenalan bahasa isyarat.
+## 📜 Lisensi & Atribusi (Open Source Notice)
+- **Lisensi Kode Utama**: Repositori ini dilisensikan di bawah [MIT License](LICENSE) - Hak Cipta &copy; 2026 **Milan Alfandi Ismail**. Bebas digunakan, dimodifikasi, dan didistribusikan untuk keperluan akademik maupun pengembangan perangkat lunak.
+- **Atribusi Dataset (Third-Party Open Source Notice)**:
+  - Dataset: [Indonesian Sign Language (BISINDO)](https://www.kaggle.com/datasets/agungmrf/indonesian-sign-language-bisindo/data) oleh **Agung MRF** via Kaggle.
+  - Digunakan untuk tujuan penelitian ilmiah, benchmarking model, dan edukasi sistem pengenalan bahasa isyarat. Seluruh hak cipta data citra mentah adalah milik kontributor dataset.
+- **Pustaka & Model Eksternal**:
+  - MediaPipe Hand Landmarker (Apache License 2.0 oleh Google LLC).
+  - PyTorch & Torchvision (BSD-3-Clause License oleh Meta Platforms, Inc. & PyTorch Contributors).

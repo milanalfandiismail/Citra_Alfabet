@@ -44,5 +44,9 @@ Desktop.ini
 
 # File Slide/Materi Kuliah Mentah (.txt / .pptx)
 *.txt
+!requirements.txt
 *.pptx
 *.pdf
+
+# Dokumentasi Rencana Internal
+docs/

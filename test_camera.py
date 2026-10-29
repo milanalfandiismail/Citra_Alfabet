@@ -1,5 +1,8 @@
 import os
 import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 import cv2
 import numpy as np
 from PIL import Image
@@ -212,10 +215,10 @@ actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 actual_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 mirror_view = True
 
-# Ukuran kotak tengah
-roi_size = 460
-if roi_size > int(min(actual_w, actual_h) * 0.85):
-    roi_size = int(min(actual_w, actual_h) * 0.75)
+# Ukuran kotak tengah: disesuaikan persis dengan format dataset latih (Bujur Sangkar 640x640)
+roi_size = 640
+if roi_size > int(min(actual_w, actual_h) * 0.90):
+    roi_size = int(min(actual_w, actual_h) * 0.85)
 
 print("\n" + "="*65)
 print("🎯 BISINDO CLASSIFIER - DUAL MODE (1D-CNN LANDMARK & 2D-CNN):")
@@ -262,11 +265,11 @@ while True:
 
     h, w, _ = frame.shape
 
-    # Posisi Kotak Pas di Tengah
-    start_x = (w - roi_size) // 2
-    start_y = (h - roi_size) // 2
-    end_x = start_x + roi_size
-    end_y = start_y + roi_size
+    # Posisi Kotak Pas di Tengah (Bujur Sangkar 1:1 Sesuai Dataset)
+    start_x = max(0, (w - roi_size) // 2)
+    start_y = max(0, (h - roi_size) // 2)
+    end_x = min(w, start_x + roi_size)
+    end_y = min(h, start_y + roi_size)
 
     roi = frame[start_y:end_y, start_x:end_x]
     active_key = model_keys[current_model_idx]
@@ -274,16 +277,20 @@ while True:
 
     top3_results = []
     hand_found = False
+    hand_count = 0
 
-    # 1. Jalankan Deteksi MediaPipe pada Kotak ROI
+    # 1. Jalankan Deteksi MediaPipe pada Kotak ROI (Format 640x640 Identik Dataset)
     if roi.size > 0 and roi.shape[0] == roi_size and roi.shape[1] == roi_size:
-        rgb_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
+        # Resize ke 640x640 agar densitas dan koordinat geometris 100% identik dengan dataset train
+        roi_640 = cv2.resize(roi, (640, 640))
+        rgb_roi = cv2.cvtColor(roi_640, cv2.COLOR_BGR2RGB)
         mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_roi)
         res = detector.detect(mp_img)
 
         # Gambar Skeleton pada ROI
         if res.hand_landmarks:
             hand_found = True
+            hand_count = len(res.hand_landmarks)
             for lms in res.hand_landmarks:
                 pts = [(start_x + int(lm.x * roi_size), start_y + int(lm.y * roi_size)) for lm in lms]
                 for p in pts:
@@ -295,18 +302,28 @@ while True:
         if active_meta["type"] == "landmark":
             # Model 1D-CNN Landmark
             if res.hand_landmarks:
-                h1 = normalize_hand(res.hand_landmarks[0])
-                if len(res.hand_landmarks) > 1:
-                    h2 = normalize_hand(res.hand_landmarks[1])
-                else:
+                if hand_count == 1:
+                    h1 = normalize_hand(res.hand_landmarks[0])
                     h2 = np.zeros((21, 3), dtype=np.float32)
+                    inp_lnd = torch.from_numpy(np.vstack([h1, h2]).T).unsqueeze(0).to(device)
+                    with torch.no_grad():
+                        out = active_meta["model"](inp_lnd)
+                        probs = torch.nn.functional.softmax(out[0], dim=0)
+                else:
+                    # Evaluasi kedua kombinasi permutasi [H1, H2] dan [H2, H1] secara instan dalam 1 batch tensor
+                    hA = normalize_hand(res.hand_landmarks[0])
+                    hB = normalize_hand(res.hand_landmarks[1])
+                    p1 = np.vstack([hA, hB]).T
+                    p2 = np.vstack([hB, hA]).T
+                    batch_inp = torch.from_numpy(np.stack([p1, p2])).to(device)
+                    with torch.no_grad():
+                        out = active_meta["model"](batch_inp)
+                        probs_b = torch.nn.functional.softmax(out, dim=1)
+                        max_conf, _ = torch.max(probs_b, dim=1)
+                        best_idx = torch.argmax(max_conf).item()
+                        probs = probs_b[best_idx]
 
-                inp_lnd = torch.from_numpy(np.vstack([h1, h2]).T).unsqueeze(0).to(device)
-                with torch.no_grad():
-                    out = active_meta["model"](inp_lnd)
-                    probs = torch.nn.functional.softmax(out[0], dim=0)
-                    top_probs, top_indices = torch.topk(probs, 3)
-
+                top_probs, top_indices = torch.topk(probs, 3)
                 for p, idx in zip(top_probs, top_indices):
                     top3_results.append((class_names[idx.item()], p.item() * 100))
         else:
@@ -340,32 +357,42 @@ while True:
     box_color = (0, 255, 127) if is_confident else ((0, 215, 255) if best_conf >= 25.0 else (0, 140, 255))
     cv2.rectangle(frame, (start_x, start_y), (end_x, end_y), box_color, 3)
 
-    cv2.putText(frame, f"KOTAK TENGAH ({roi_size}x{roi_size})", (start_x, start_y - 12),
+    cv2.putText(frame, f"KOTAK TENGAH ({roi_size}x{roi_size}) - FORMAT DATASET", (start_x, start_y - 12),
                 cv2.FONT_HERSHEY_DUPLEX, 0.65, box_color, 2)
 
     # Panel HUD Prediksi (Kiri Atas)
-    cv2.rectangle(frame, (30, 30), (640, 230), (20, 20, 20), -1)
-    cv2.rectangle(frame, (30, 30), (640, 230), (70, 70, 70), 2)
+    cv2.rectangle(frame, (30, 25), (650, 240), (20, 20, 20), -1)
+    cv2.rectangle(frame, (30, 25), (650, 240), (70, 70, 70), 2)
 
-    cv2.putText(frame, f"Kamera: Index {current_cam_id} | Mode: Dual-Mode CNN", 
-                (45, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 215, 255), 1)
+    cv2.putText(frame, f"Kamera: Index {current_cam_id} | Model [M]: {active_key[:38]}", 
+                (45, 52), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (0, 215, 255), 1)
 
-    cv2.putText(frame, f"Model [M]: {active_key[:45]}", (45, 85),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.48, (200, 200, 200), 1)
+    if hand_count >= 2:
+        hand_text = "Tangan: 2 Terdeteksi [Dual-Hand Aktif]"
+        hand_col = (0, 255, 127)
+    elif hand_count == 1:
+        hand_text = "Tangan: 1 Terdeteksi"
+        hand_col = (0, 215, 255)
+    else:
+        hand_text = "Tangan: Belum Terdeteksi"
+        hand_col = (0, 165, 255)
+
+    cv2.putText(frame, f"{hand_text} | Mirror [X]: {'ON' if mirror_view else 'OFF'}", (45, 78),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.48, hand_col, 1)
 
     if top3_results and is_confident:
-        cv2.putText(frame, f"Prediksi: {best_letter}", (45, 138),
+        cv2.putText(frame, f"Prediksi: {best_letter}", (45, 142),
                     cv2.FONT_HERSHEY_DUPLEX, 1.4, (0, 255, 0), 3)
-        cv2.putText(frame, f"Keyakinan: {best_conf:.1f}%", (45, 172),
+        cv2.putText(frame, f"Keyakinan: {best_conf:.1f}%", (45, 178),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.65, (240, 240, 240), 2)
 
         alt_text = f"Top-3: 1.{best_letter} ({best_conf:.0f}%) | 2.{top3_results[1][0]} ({top3_results[1][1]:.0f}%) | 3.{top3_results[2][0]} ({top3_results[2][1]:.0f}%)"
-        cv2.putText(frame, alt_text, (45, 205), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
+        cv2.putText(frame, alt_text, (45, 212), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (180, 180, 180), 1)
     else:
         status_msg = "Posisikan Tangan di Kotak..." if not hand_found else f"Gestur: {best_letter} ({best_conf:.0f}%)"
-        cv2.putText(frame, status_msg, (45, 145), cv2.FONT_HERSHEY_DUPLEX, 0.85, (0, 165, 255), 2)
-        cv2.putText(frame, "Hadapkan telapak tangan & lakukan gestur BISINDO", (45, 185),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.50, (200, 200, 200), 1)
+        cv2.putText(frame, status_msg, (45, 150), cv2.FONT_HERSHEY_DUPLEX, 0.85, (0, 165, 255), 2)
+        cv2.putText(frame, "Hadapkan telapak tangan & lakukan gestur BISINDO", (45, 190),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.48, (200, 200, 200), 1)
 
     # Banner Tombol Pintas
     banner_text = "[M] Ganti Model | [+/-] Ukuran Kotak | [X] Mirror | [C] Kamera | [Q] Keluar"
@@ -380,7 +407,7 @@ while True:
         current_model_idx = (current_model_idx + 1) % len(model_keys)
         print(f"🔄 Berpindah ke model: {model_keys[current_model_idx]}")
     elif key == ord("+") or key == ord("="):
-        roi_size = min(int(min(w, h) * 0.85), roi_size + 30)
+        roi_size = min(int(min(w, h) * 0.95), roi_size + 30)
         print(f"➕ Kotak tengah diperbesar: {roi_size}x{roi_size}")
     elif key == ord("-") or key == ord("_"):
         roi_size = max(200, roi_size - 30)

@@ -13,6 +13,17 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def resolve_path(filename):
+    """Mencari file di folder script terlebih dahulu, kemudian di working directory."""
+    path_in_base = os.path.join(BASE_DIR, filename)
+    if os.path.exists(path_in_base):
+        return path_in_base
+    if os.path.exists(filename):
+        return os.path.abspath(filename)
+    return path_in_base
+
 # 1. Deteksi Perangkat GPU
 def get_device():
     try:
@@ -27,6 +38,26 @@ def get_device():
 
 device = get_device()
 print(f"Perangkat aktif inferensi kamera: {device}")
+
+def safe_load_model(model, file_path, target_device):
+    """Memuat bobot PyTorch secara aman dengan fallback otomatis ke CPU jika perangkat GPU gagal."""
+    try:
+        state = torch.load(file_path, map_location=target_device, weights_only=False)
+        model.load_state_dict(state)
+        model.to(target_device)
+        model.eval()
+        return model, target_device
+    except Exception as err_target:
+        try:
+            cpu_dev = torch.device("cpu")
+            state = torch.load(file_path, map_location=cpu_dev, weights_only=False)
+            model.load_state_dict(state)
+            model.to(cpu_dev)
+            model.eval()
+            print(f"   ℹ️ Dimuat ke CPU sebagai fallback (perangkat {target_device} gagal: {err_target})")
+            return model, cpu_dev
+        except Exception as err_cpu:
+            raise RuntimeError(f"Gagal memuat {file_path}: {err_cpu}")
 
 class_names = [chr(i) for i in range(ord("A"), ord("Z") + 1)]
 
@@ -109,61 +140,96 @@ class CustomSignCNN(nn.Module):
 # 3. Load Seluruh Model
 models_dict = {}
 
-# Model 1: 1D-CNN Landmark
-if os.path.exists("best_landmark_cnn.pth"):
+lnd_path = resolve_path("best_landmark_cnn.pth")
+m2_path = resolve_path("best_mobilenetv2.pth")
+c_path = resolve_path("best_custom_cnn.pth")
+task_path = resolve_path("hand_landmarker.task")
+
+# 4. Inisialisasi MediaPipe Hand Landmarker
+detector = None
+if os.path.exists(task_path):
     try:
-        m_lnd = SignLandmarkCNN(in_channels=3, num_classes=26).to(device)
-        m_lnd.load_state_dict(torch.load("best_landmark_cnn.pth", map_location=device))
-        m_lnd.eval()
+        base_options = python.BaseOptions(model_asset_path=task_path)
+        detector = vision.HandLandmarker.create_from_options(vision.HandLandmarkerOptions(
+            base_options=base_options,
+            num_hands=2,
+            min_hand_detection_confidence=0.18,
+            min_hand_presence_confidence=0.18
+        ))
+        print(f"✅ MediaPipe Hand Landmarker siap: {os.path.basename(task_path)}")
+    except Exception as e:
+        print(f"⚠️ MediaPipe tidak dapat diinisialisasi ({e}). Model 1D-CNN akan dinonaktifkan.")
+else:
+    print(f"⚠️ File '{task_path}' tidak ditemukan. Model 1D-CNN Landmark tidak dapat aktif.")
+
+# Model 1: 1D-CNN Landmark (hanya aktif jika file bobot dan detector MediaPipe tersedia)
+if os.path.exists(lnd_path) and detector is not None:
+    try:
+        m_lnd = SignLandmarkCNN(in_channels=3, num_classes=26)
+        m_lnd, m_dev = safe_load_model(m_lnd, lnd_path, device)
         models_dict["1D-CNN Landmark Skeleton (Presisi 97%+) [Utama]"] = {
             "type": "landmark",
-            "model": m_lnd
+            "model": m_lnd,
+            "device": m_dev
         }
-        print("✅ Berhasil memuat: best_landmark_cnn.pth (Model 1D-CNN Utama)")
+        print(f"✅ Berhasil memuat: {os.path.basename(lnd_path)} (Model 1D-CNN Utama) pada {m_dev}")
     except Exception as e:
-        print("Gagal memuat 1D-CNN:", e)
+        print(f"❌ Gagal memuat 1D-CNN ({lnd_path}):", e)
 
 # Model 2: 2D-CNN MobileNetV2
-if os.path.exists("best_mobilenetv2.pth"):
+if os.path.exists(m2_path):
     try:
-        m_m2 = build_mobilenet_v2(26).to(device)
-        m_m2.load_state_dict(torch.load("best_mobilenetv2.pth", map_location=device))
-        m_m2.eval()
+        m_m2 = build_mobilenet_v2(26)
+        m_m2, m_dev = safe_load_model(m_m2, m2_path, device)
         models_dict["2D-CNN MobileNetV2 (Transfer Learning)"] = {
             "type": "image",
             "model": m_m2,
-            "size": (224, 224)
+            "size": (224, 224),
+            "device": m_dev
         }
-        print("✅ Berhasil memuat: best_mobilenetv2.pth")
+        print(f"✅ Berhasil memuat: {os.path.basename(m2_path)} pada {m_dev}")
     except Exception as e:
-        print("Gagal memuat MobileNetV2:", e)
+        print(f"❌ Gagal memuat MobileNetV2 ({m2_path}):", e)
 
 # Model 3: Custom 2D-CNN
-if os.path.exists("best_custom_cnn.pth"):
+if os.path.exists(c_path):
     try:
-        m_c = CustomSignCNN(26).to(device)
-        m_c.load_state_dict(torch.load("best_custom_cnn.pth", map_location=device))
-        m_c.eval()
+        m_c = CustomSignCNN(26)
+        m_c, m_dev = safe_load_model(m_c, c_path, device)
         models_dict["2D-CNN Custom Scratch (3-Block CNN)"] = {
             "type": "image",
             "model": m_c,
-            "size": (128, 128)
+            "size": (128, 128),
+            "device": m_dev
         }
-        print("✅ Berhasil memuat: best_custom_cnn.pth")
+        print(f"✅ Berhasil memuat: {os.path.basename(c_path)} pada {m_dev}")
     except Exception as e:
-        print("Gagal memuat Custom CNN:", e)
+        print(f"❌ Gagal memuat Custom CNN ({c_path}):", e)
 
 model_keys = list(models_dict.keys())
 current_model_idx = 0
 
-# 4. Inisialisasi MediaPipe Hand Landmarker
-base_options = python.BaseOptions(model_asset_path="hand_landmarker.task")
-detector = vision.HandLandmarker.create_from_options(vision.HandLandmarkerOptions(
-    base_options=base_options,
-    num_hands=2,
-    min_hand_detection_confidence=0.18,
-    min_hand_presence_confidence=0.18
-))
+# Validasi krusial: pastikan setidaknya satu model berhasil dimuat
+if not model_keys:
+    print("\n" + "=" * 70)
+    print("❌ ERROR KRITIS: Tidak ada model AI (.pth) yang berhasil dimuat!")
+    print("=" * 70)
+    print(f"Direktori Script : {BASE_DIR}")
+    print(f"Current Directory: {os.getcwd()}")
+    print("\nPemeriksaan File:")
+    print(f"  1. best_landmark_cnn.pth -> {'DITEMUKAN' if os.path.exists(lnd_path) else 'TIDAK DITEMUKAN'}")
+    print(f"  2. best_mobilenetv2.pth  -> {'DITEMUKAN' if os.path.exists(m2_path) else 'TIDAK DITEMUKAN'}")
+    print(f"  3. best_custom_cnn.pth   -> {'DITEMUKAN' if os.path.exists(c_path) else 'TIDAK DITEMUKAN'}")
+    print(f"  4. hand_landmarker.task  -> {'DITEMUKAN' if os.path.exists(task_path) else 'TIDAK DITEMUKAN'}")
+    print("\nSolusi:")
+    print("  - Pastikan file .pth dan hand_landmarker.task berada di folder yang sama dengan test_camera.py.")
+    print("  - Jika baru clone di perangkat lain, pastikan file bobot ikut terunduh.")
+    print("=" * 70 + "\n")
+    try:
+        input("Tekan Enter untuk keluar...")
+    except Exception:
+        pass
+    sys.exit(1)
 
 def normalize_hand(landmarks):
     pts = np.array([[lm.x, lm.y, lm.z] for lm in landmarks], dtype=np.float32)
@@ -245,12 +311,15 @@ HAND_CONNECTIONS = [
 
 while True:
     ret, frame = cap.read()
-    if not ret:
-        cv2.putText(frame, f"Gagal membaca Kamera {current_cam_id}. Tekan 'C' ganti kamera.",
-                    (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-        cv2.imshow(window_name, frame)
-        key = cv2.waitKey(30) & 0xFF
-        if key == ord("q"):
+    if not ret or frame is None:
+        dummy_frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        cv2.putText(dummy_frame, f"Gagal membaca Kamera {current_cam_id}.",
+                    (30, 220), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        cv2.putText(dummy_frame, "Tekan 'C' ganti kamera, atau 'Q' untuk keluar.",
+                    (30, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
+        cv2.imshow(window_name, dummy_frame)
+        key = cv2.waitKey(50) & 0xFF
+        if key == ord("q") or key == ord("Q"):
             break
         elif key == ord("c") or key == ord("C"):
             if available_cams:
@@ -274,6 +343,7 @@ while True:
     roi = frame[start_y:end_y, start_x:end_x]
     active_key = model_keys[current_model_idx]
     active_meta = models_dict[active_key]
+    model_dev = active_meta.get("device", device)
 
     top3_results = []
     hand_found = False
@@ -284,28 +354,31 @@ while True:
         # Resize ke 640x640 agar densitas dan koordinat geometris 100% identik dengan dataset train
         roi_640 = cv2.resize(roi, (640, 640))
         rgb_roi = cv2.cvtColor(roi_640, cv2.COLOR_BGR2RGB)
-        mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_roi)
-        res = detector.detect(mp_img)
+        
+        res = None
+        if detector is not None:
+            mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_roi)
+            res = detector.detect(mp_img)
 
-        # Gambar Skeleton pada ROI
-        if res.hand_landmarks:
-            hand_found = True
-            hand_count = len(res.hand_landmarks)
-            for lms in res.hand_landmarks:
-                pts = [(start_x + int(lm.x * roi_size), start_y + int(lm.y * roi_size)) for lm in lms]
-                for p in pts:
-                    cv2.circle(frame, p, 5, (0, 255, 127), -1)
-                for p1, p2 in HAND_CONNECTIONS:
-                    cv2.line(frame, pts[p1], pts[p2], (0, 255, 255), 2)
+            # Gambar Skeleton pada ROI
+            if res.hand_landmarks:
+                hand_found = True
+                hand_count = len(res.hand_landmarks)
+                for lms in res.hand_landmarks:
+                    pts = [(start_x + int(lm.x * roi_size), start_y + int(lm.y * roi_size)) for lm in lms]
+                    for p in pts:
+                        cv2.circle(frame, p, 5, (0, 255, 127), -1)
+                    for p1, p2 in HAND_CONNECTIONS:
+                        cv2.line(frame, pts[p1], pts[p2], (0, 255, 255), 2)
 
         # 2. Inferensi Sesuai Model Aktif
         if active_meta["type"] == "landmark":
             # Model 1D-CNN Landmark
-            if res.hand_landmarks:
+            if res is not None and res.hand_landmarks:
                 if hand_count == 1:
                     h1 = normalize_hand(res.hand_landmarks[0])
                     h2 = np.zeros((21, 3), dtype=np.float32)
-                    inp_lnd = torch.from_numpy(np.vstack([h1, h2]).T).unsqueeze(0).to(device)
+                    inp_lnd = torch.from_numpy(np.vstack([h1, h2]).T).unsqueeze(0).to(model_dev)
                     with torch.no_grad():
                         out = active_meta["model"](inp_lnd)
                         probs = torch.nn.functional.softmax(out[0], dim=0)
@@ -315,7 +388,7 @@ while True:
                     hB = normalize_hand(res.hand_landmarks[1])
                     p1 = np.vstack([hA, hB]).T
                     p2 = np.vstack([hB, hA]).T
-                    batch_inp = torch.from_numpy(np.stack([p1, p2])).to(device)
+                    batch_inp = torch.from_numpy(np.stack([p1, p2])).to(model_dev)
                     with torch.no_grad():
                         out = active_meta["model"](batch_inp)
                         probs_b = torch.nn.functional.softmax(out, dim=1)
@@ -330,7 +403,7 @@ while True:
             # Model 2D-CNN Citra (MobileNetV2 / Custom)
             target_size = active_meta["size"]
             pil_img = Image.fromarray(rgb_roi).resize(target_size)
-            tensor_2d = tf_2d(pil_img).unsqueeze(0).to(device)
+            tensor_2d = tf_2d(pil_img).unsqueeze(0).to(model_dev)
             with torch.no_grad():
                 out = active_meta["model"](tensor_2d)
                 probs = torch.nn.functional.softmax(out[0], dim=0)
@@ -404,8 +477,11 @@ while True:
     if key == ord("q") or key == ord("Q"):
         break
     elif key == ord("m") or key == ord("M"):
-        current_model_idx = (current_model_idx + 1) % len(model_keys)
-        print(f"🔄 Berpindah ke model: {model_keys[current_model_idx]}")
+        if len(model_keys) > 1:
+            current_model_idx = (current_model_idx + 1) % len(model_keys)
+            print(f"🔄 Berpindah ke model: {model_keys[current_model_idx]}")
+        else:
+            print(f"ℹ️ Hanya ada 1 model aktif ({model_keys[0]}).")
     elif key == ord("+") or key == ord("="):
         roi_size = min(int(min(w, h) * 0.95), roi_size + 30)
         print(f"➕ Kotak tengah diperbesar: {roi_size}x{roi_size}")

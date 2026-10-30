@@ -1,0 +1,105 @@
+PROJECT PENGENALAN POLA
+
+1. Pendahuluan (Background & Rumusan Masalah) (20%)
+
+Bagian ini menjelaskan mengapa proyek ini penting dan masalah nyata apa yang ingin diselesaikan
+melalui pendekatan pengenalan pola.
+
+•
+
+Latar Belakang: Uraikan konteks masalah, urgensi, dan alasan mengapa otomatisasi atau
+pengenalan pola pada domain tersebut diperlukan (contoh: bidang kesehatan, keamanan,
+industri, atau pengolahan citra).
+
+•  Rumusan Masalah: Tuliskan pertanyaan spesi?k yang akan dijawab melalui sistem
+
+pengenalan pola yang dibangun.
+
+•  Tujuan Proyek: Jelaskan target pencapaian dari proyek ini (misalnya: membangun model
+
+klasi?kasi objek dengan tingkat akurasi minimal 85%).
+
+•  Batasan Masalah: Tentukan ruang lingkup proyek agar fokus (misalnya jenis dataset, jumlah
+
+kelas, atau ?tur tertentu yang digunakan).
+
+2. Dasar Teori (Theoretical Foundation) (20%)
+
+Jelaskan konsep-konsep fundamental pengenalan pola yang mendasari sistem Anda.
+
+•
+
+Siklus Pengenalan Pola: Jelaskan tahapan umum mulai dari pengumpulan data (sensing),
+pra-pemrosesan, ekstraksi ?tur, hingga proses klasi?kasi/keputusan.
+
+•  Metode/Algoritma Utama: Uraikan teori dasar dari algoritma yang dipilih (misalnya K-
+
+Nearest Neighbors, Support Vector Machine, Naive Bayes, Decision Tree, atau Convolutional
+Neural Network untuk data citra).
+
+•  Metrik Evaluasi: Jelaskan teori metrik yang digunakan untuk mengukur kinerja model,
+
+seperti Confusion Matrix, Akurasi, Presisi, Recall, dan F1-Score.
+
+3. Metodologi & Penerapan (Implementation & Work?ow) (20%)
+
+Bagian ini merinci langkah teknis pengerjaan proyek secara sistematis.
+
+•  Dataset:
+
+o  Sumber data (misalnya UCI Machine Learning Repository, Kaggle, atau data primer
+
+hasil pengambilan sendiri).
+
+o  Karakteristik data (jumlah sampel, jumlah ?tur, dan distribusi kelas).
+
+•  Pra-pemrosesan Data (Data Preprocessing):
+
+o  Penanganan nilai kosong (missing values).
+
+o  Normalisasi atau standarisasi rentang data.
+
+o  Reduksi dimensi (jika diperlukan, misalnya menggunakan PCA).
+
+•  Ekstraksi Fitur (Feature Extraction):
+
+o  Cara mengubah data mentah menjadi representasi ?tur numerik yang bermakna
+
+bagi model.
+
+•  Pelatihan Model (Model Training):
+
+o  Pembagian dataset menjadi data latih (training set) dan data uji (testing set),
+
+misalnya dengan rasio 80:20 atau teknik Cross-Validation.
+
+o  Proses coding menggunakan bahasa pemrograman (umumnya Python dengan
+
+pustaka seperti Scikit-Learn, TensorFlow, atau PyTorch).
+
+4. Eksperimen, Hasil, & Evaluasi (Results & Evaluation) (20%)
+
+Laporkan temuan dari uji coba model yang telah dibuat.
+
+•
+
+Skenario Eksperimen: Jelaskan variasi pengujian yang dilakukan (misalnya membandingkan
+dua algoritma berbeda atau mencoba berbagai variasi hyperparameter).
+
+•  Hasil Pengujian: Sajikan hasil dalam bentuk tabel performa atau visualisasi Confusion Matrix.
+
+•  Analisis Pembahasan: Diskusikan mengapa model bekerja dengan baik atau mengapa terjadi
+kesalahan klasi?kasi (misclassi?cation). Apakah ada indikasi over?tting atau under?tting?
+
+5. Kesimpulan & Saran (Conclusion) (20%)
+
+•  Kesimpulan: Ringkasan singkat mengenai pencapaian proyek dan jawaban atas rumusan
+
+masalah yang diajukan di awal.
+
+•
+
+Saran: Rekomendasi untuk pengembangan atau perbaikan di masa mendatang (misalnya
+penambahan variasi data atau penggunaan arsitektur model yang lebih kompleks).
+
+

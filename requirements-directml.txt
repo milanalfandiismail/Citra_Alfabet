@@ -1,0 +1,10 @@
+# ==============================================================================
+# DEPENDENSI BISINDO CNN DENGAN AKSELERASI AMD GPU (DIRECTML)
+# Instalasi: pip install -r requirements-directml.txt
+# Membutuhkan Python <= 3.11 pada Windows (DirectML wheel resmi Microsoft)
+# ==============================================================================
+
+-r requirements.txt
+
+# Akselerasi Hardware GPU AMD Radeon (Khusus Windows via DirectML)
+torch-directml; platform_system == "Windows" and python_version <= "3.11"

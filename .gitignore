@@ -45,8 +45,16 @@ Desktop.ini
 # File Slide/Materi Kuliah Mentah (.txt / .pptx)
 *.txt
 !requirements.txt
+!requirements-directml.txt
+!project.txt
 *.pptx
 *.pdf
 
-# Dokumentasi Rencana Internal
-docs/
+# File Backup Model Lokal
+*_backup.pth
+
+# Dokumentasi Rencana Internal (Whitelist grafik laporan)
+docs/*
+!docs/grafik/
+
+
